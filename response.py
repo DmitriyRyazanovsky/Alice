@@ -4,15 +4,20 @@ class Response:
             'session': request.json['session'],
             'version': request.json['version'],
             'response': {
-                'end_session': False,
-                'buttons': []
+                'end_session': False
             }
         }
 
-    def setText(self, text):
-        self.res['response']['text'] = text
+    def addText(self, text):
+        if not 'text' in self.res['response']:
+            self.res['response']['text'] = text
+        else:
+            self.res['response']['text'] += ' ' + text
 
     def addButton(self, title):
+        if not 'buttons' in self.res['response']:
+            self.res['response']['buttons'] = []
+
         self.res['response']['buttons'].append(
             {
                 'title': title,
