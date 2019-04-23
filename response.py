@@ -17,7 +17,7 @@ class Response:
     def setText(self, text):
         self.res['response']['text'] = text
 
-    def addButton(self, title, url = None):
+    def addButton(self, title, url=None):
         if not 'buttons' in self.res['response']:
             self.res['response']['buttons'] = []
 
@@ -29,10 +29,11 @@ class Response:
 
         self.res['response']['buttons'].append(button)
 
-    def setImage(self, title, id):
+    def setImage(self, id, title=None):
         self.res['response']['card'] = {}
         self.res['response']['card']['type'] = 'BigImage'
-        self.res['response']['card']['title'] = title
+        if title:
+            self.res['response']['card']['title'] = title
         self.res['response']['card']['image_id'] = id
 
     def endSession(self):

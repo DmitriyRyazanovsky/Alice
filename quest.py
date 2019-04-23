@@ -3,6 +3,7 @@ import logging
 import json
 from user import User
 from response import Response
+from images import Image
 
 # создаём словарь, где для каждого пользователя мы будем хранить его данные
 users = {}
@@ -53,7 +54,15 @@ def handle_dialog(res, req):
 def Room1(res, user, command):
     user.room = 1
 
-    if command == 'открыть сейф':
+    if command == 'покажи':
+        if not user.seif:
+            res.setImage(Image.ROOM1_SEIF_CLOSED)
+        elif not user.key:
+            res.setImage(Image.ROOM1_SEIF_OPENED_KEY)
+        else:
+            res.setImage(Image.ROOM1_SEIF_OPENED)
+
+    elif command == 'открыть сейф':
         if user.seif:
             res.addText('Сейф уже открыт.')
         else:
@@ -86,6 +95,7 @@ def Room1(res, user, command):
 
     res.addText('Выберите команду:')
 
+    res.addButton('покажи')
     if not user.seif:
         res.addButton('открыть сейф')
     if user.password and not user.seif:
