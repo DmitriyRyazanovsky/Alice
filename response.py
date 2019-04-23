@@ -29,11 +29,10 @@ class Response:
 
         self.res['response']['buttons'].append(button)
 
-    def setImage(self, id, title=None):
+    def setImage(self, title, id):
         self.res['response']['card'] = {}
         self.res['response']['card']['type'] = 'BigImage'
-        if title:
-            self.res['response']['card']['title'] = title
+        self.res['response']['card']['title'] = title
         self.res['response']['card']['image_id'] = id
 
     def endSession(self):

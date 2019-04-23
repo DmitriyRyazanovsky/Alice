@@ -54,13 +54,14 @@ def handle_dialog(res, req):
 def Room1(res, user, command):
     user.room = 1
 
-    if command == 'покажи':
+    if command == 'покажи комнату':
         if not user.seif:
-            res.setImage(Image.ROOM1_SEIF_CLOSED)
+            res.setImage('Комната с закрытым сейфом', Image.ROOM1_SEIF_CLOSED)
         elif not user.key:
-            res.setImage(Image.ROOM1_SEIF_OPENED_KEY)
+            res.setImage('Комната с открытым сейфом с ключём внутри', Image.ROOM1_SEIF_OPENED_KEY)
         else:
-            res.setImage(Image.ROOM1_SEIF_OPENED)
+            res.setImage('Комната с пустым открытым сейфом', Image.ROOM1_SEIF_OPENED)
+
 
     elif command == 'открыть сейф':
         if user.seif:
@@ -73,6 +74,7 @@ def Room1(res, user, command):
             res.addText('Сейф уже открыт.')
         else:
             res.addText('Долго подбирая код вы воспользовались надписью на стене и открыли сейф.')
+            res.addText('В сейфе лежит ключ.')
             user.seif = True
 
     elif command == 'взять ключ' and user.seif:
@@ -95,7 +97,7 @@ def Room1(res, user, command):
 
     res.addText('Выберите команду:')
 
-    res.addButton('покажи')
+    res.addButton('покажи комнату')
     if not user.seif:
         res.addButton('открыть сейф')
     if user.password and not user.seif:
@@ -109,13 +111,19 @@ def Room2(res, user: User, command):
     user.password = True
     user.room = 2
 
-    if command == 'зайти в начальную комнату':
+    if command == 'покажи комнату':
+        if not user.window:
+            res.setImage('Комната с окном', Image.ROOM2)
+        else:
+            res.setImage('Комната с окном, а под ним табуретка', Image.ROOM2_TABURETKA)
+
+    elif command == 'зайти в начальную комнату':
         Room1(res, user, None)
         return
 
     elif command == 'открыть дверь ключом' and not user.opened:
         if user.key:
-            res.addText('Вы открыли дверь')
+            res.addText('Вы открыли дверь.')
             user.opened = True
         else:
             res.addText('У вас нет ключа.')
@@ -132,17 +140,17 @@ def Room2(res, user: User, command):
             res.addText('Поздравляем, вы прошли квест!')
             return
         else:
-            res.addText('Окно слишком высоко')
+            res.addText('Окно слишком высоко.')
 
     elif command == 'поставить табуретку под окно':
         if user.window:
-            res.addText('Табуретка уже стоит под окном')
+            res.addText('Табуретка уже стоит под окном.')
         elif user.taburetka:
-            res.addText('Вы поставили табуретку под окно')
+            res.addText('Вы поставили табуретку под окно.')
             user.window = True
             user.taburetka = False
         else:
-            res.addText('У вас нет табуретки')
+            res.addText('У вас нет табуретки.')
 
     else:
         if command:
@@ -152,6 +160,9 @@ def Room2(res, user: User, command):
         res.addText('Высоко под потолком окно.')
         res.addText('На стене надпись 1234, но вы бы ни за что не догадались, что это код от сейфа.')
 
+    res.addText('Выберите команду:')
+
+    res.addButton('покажи комнату')
     res.addButton('зайти в начальную комнату')
     res.addButton('зайти в следующую комнату')
     res.addButton('вылезти в окно')
@@ -164,7 +175,13 @@ def Room2(res, user: User, command):
 def Room3(res, user, command):
     user.room = 3
 
-    if command == 'выйти':
+    if command == 'покажи комнату':
+        if not user.taburetka:
+            res.setImage('Комната с табуреткой', Image.ROOM3_TABURETKA)
+        else:
+            res.setImage('Пустая комната', Image.ROOM3)
+
+    elif command == 'выйти из комнаты':
         Room2(res, user, None)
         return
 
@@ -191,7 +208,10 @@ def Room3(res, user, command):
         else:
             res.addText('Интересно стоять в пустой комнате с табуреткой в руках.')
 
-    res.addButton('выйти')
+    res.addText('Выберите команду:')
+
+    res.addButton('покажи комнату')
+    res.addButton('выйти из комнаты')
     if user.taburetka:
         res.addButton('поставить табуретку')
     else:
