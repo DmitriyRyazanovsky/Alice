@@ -63,7 +63,7 @@ def Room1(res, user, command):
         if user.seif:
             res.addText('Сейф уже открыт.')
         else:
-            res.addText('Сейф открылся. Внутри лежит ключ.')
+            res.addText('Долго подбирая код вы воспользовались надписью на стене и открыли сейф.')
             user.seif = True
 
     elif command == 'взять ключ' and user.seif:
@@ -103,10 +103,8 @@ def Room2(res, user: User, command):
         Room1(res, user, None)
         return
 
-    elif command == 'открыть дверь ключом':
-        if user.opened:
-            res.addText('Дверь уже открыта')
-        elif user.key:
+    elif command == 'открыть дверь ключом' and not user.opened:
+        if user.key:
             res.addText('Вы открыли дверь')
             user.opened = True
         else:
@@ -154,39 +152,40 @@ def Room2(res, user: User, command):
 
 
 def Room3(res, user, command):
-    res.addText('Вы в третьей комнате.')
-    res.addText('Здесь только дверь назад.')
-    if not user.taburetka:
-        res.addText('В углу стоит табуретка.')
+    user.room = 3
 
-    # табуретки нет
-    if not user.taburetka:
-        res.addButton('зайти в прошлую комнату')  # 1
-        res.addButton('взять табуретку')  # 2
-        if command == 'зайти в прошлую комнату':
-            res.addText('Вы вышли из комнаты и попали во вторую комнату.')
-            user.room = 2
-            return
-        elif command == 'взять табуретку':
-            res.addText('Вы взяли табуретку.')
+    if command == 'выйти':
+        Room2(res, user, None)
+        return
+
+    elif command == 'поднять табуретку':
+        if user.taburetka:
+            res.addText('Она у вас в руках.')
+        else:
+            res.addText('Вы с великим и упорным трудом подняли табуретку.')
             user.taburetka = True
-            return
-        else:
-            res.addText('Неверная команда, введите еще раз.')
-    # табуретка взята
-    else:
-        res.addButton('зайти в прошлую комнату комнату')  # 1
-        res.addButton('поставить табуретку обратно')  # 2
-        if command == 'зайти в прошлую комнату комнату':
-            res.addText('Вы вышли из комнаты и попали во вторую комнату.')
-            user.room = 2
-            return
-        elif command == 'поставить табуретку обратно':
-            res.addText('Вы поставили табуретку.')
+
+    elif command == 'поставить табуретку':
+        if user.taburetka:
+            res.addText('Вы поставили табуретку обратно.')
             user.taburetka = False
-            return
         else:
-            res.addText('Неверная команда, введите еще раз.')
+            res.addText('Не путайте кнопки!')
+
+    else:
+        if command:
+            res.addText('Непонятная команда.')
+        res.addText('Вы в третьей комнате.')
+        if not user.taburetka:
+            res.addText('Здесь табуретка, дверь и всё.')
+        else:
+            res.addText('Интересно стоять в пустой комнате с табуреткой в руках.')
+
+    res.addButton('выйти')
+    if user.taburetka:
+        res.addButton('поставить табуретку')
+    else:
+        res.addButton('поднять табуретку')
 
 
 def get_first_name(req):
