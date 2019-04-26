@@ -4,6 +4,7 @@ import json
 from user import User
 from response import Response
 from images import Image
+import maps
 
 # создаём словарь, где для каждого пользователя мы будем хранить его данные
 users = {}
@@ -41,17 +42,23 @@ def handle_dialog(res, req):
         res.addText('Давай поиграем.')
         command = None
 
+    Moscow(res, req, user, command)
+    return
+
     if user.room == 1:
-        Room1(res, user, command)
+        Room1(res, req, user, command)
 
     elif user.room == 2:
-        Room2(res, user, command)
+        Room2(res, req, user, command)
 
     elif user.room == 3:
-        Room3(res, user, command)
+        Room3(res, req, user, command)
+
+    else:
+        Moscow(res, req, user, command)
 
 
-def Room1(res, user, command):
+def Room1(res, req, user, command):
     user.room = 1
 
     if command == 'покажи комнату':
@@ -85,7 +92,7 @@ def Room1(res, user, command):
             user.key = True
 
     elif command == 'выйти из комнаты':
-        Room2(res, user, None)
+        Room2(res, req, user, None)
         return
 
     else:
@@ -107,7 +114,7 @@ def Room1(res, user, command):
     res.addButton('выйти из комнаты')
 
 
-def Room2(res, user: User, command):
+def Room2(res, req, user: User, command):
     user.password = True
     user.room = 2
 
@@ -118,11 +125,13 @@ def Room2(res, user: User, command):
             res.setImage('Комната с окном, а под ним табуретка', Image.ROOM2_TABURETKA)
 
     elif command == 'зайти в начальную комнату':
-        Room1(res, user, None)
+        Room1(res, req, user, None)
         return
 
-    elif command == 'открыть дверь ключом' and not user.opened:
-        if user.key:
+    elif command == 'открыть дверь ключом':
+        if user.opened:
+            res.addText('Дверь уже открыта.')
+        elif user.key:
             res.addText('Вы открыли дверь.')
             user.opened = True
         else:
@@ -130,14 +139,15 @@ def Room2(res, user: User, command):
 
     elif command == 'зайти в следующую комнату':
         if user.opened:
-            Room3(res, user, None)
+            Room3(res, req, user, None)
             return
         else:
             res.addText('Дверь закрыта на ключ.')
 
     elif command == 'вылезти в окно':
         if user.window:
-            res.addText('Поздравляем, вы прошли квест!')
+            Moscow(res, req, user, None)
+
             return
         else:
             res.addText('Окно слишком высоко.')
@@ -172,7 +182,7 @@ def Room2(res, user: User, command):
         res.addButton('открыть дверь ключом')
 
 
-def Room3(res, user, command):
+def Room3(res, req, user, command):
     user.room = 3
 
     if command == 'покажи комнату':
@@ -182,7 +192,7 @@ def Room3(res, user, command):
             res.setImage('Пустая комната', Image.ROOM3)
 
     elif command == 'выйти из комнаты':
-        Room2(res, user, None)
+        Room2(res, req, user, None)
         return
 
     elif command == 'поднять табуретку':
@@ -218,6 +228,95 @@ def Room3(res, user, command):
         res.addButton('поднять табуретку')
 
 
+# состояние - пользователь отгадывает город
+GUESS_CITY = 1
+# состояние - пользователь выбирает место, где праздновать победу
+CHOOSE_PLACE = 2
+# состояние - пользоватль выбирает подходит место или нет
+CHOOSE_YES_NO = 3
+
+
+def Moscow(res, req, user, command):
+    if user.state == CHOOSE_YES_NO:
+        if command == 'да':
+            res.addText('Отлично! Квест пройден!')
+            res.endSession()
+
+        elif command == 'нет':
+            res.addText('А где именно вы хотите отметить?')
+            user.state = CHOOSE_PLACE
+
+        elif command == 'покажи на карте' or command == 'как дойти?':
+            res.addText('Подходит?')
+            res.addButton('да')
+            res.addButton('нет')
+
+        else:
+            res.addText('Не понятно. Так да или нет?')
+            res.addButton('да')
+            res.addButton('нет')
+            res.addButton('покажи на карте')
+
+    elif user.state == CHOOSE_PLACE:
+        organization = maps.getOrganization(command)
+
+        if organization:
+            name = organization['properties']['CompanyMetaData']['name']
+            id = organization['properties']['CompanyMetaData']['id']
+            coords = organization['geometry']['coordinates']
+
+            res.addText('Ближайшее ' + command + ' - ' + name + '.')
+            res.addText('Подходит?')
+            res.addButton('да')
+            res.addButton('нет')
+            res.addButton('покажи на карте', f'https://yandex.ru/maps/org/{id}')
+            res.addButton('как дойти?', f'https://yandex.ru/maps/?rtext={coords[1]},{coords[0]}~{maps.OUR_COORD[1]},{maps.OUR_COORD[0]}&rtt=pd')
+            user.state = CHOOSE_YES_NO
+
+        else:
+            res.addText('Не знаю такого места.')
+            res.addText('Попробуйте другой вариант.')
+            res.addButton('кафе')
+            res.addButton('пиццерия')
+            res.addButton('кинотеатр')
+
+    elif user.state == GUESS_CITY:
+        if command == 'покажи город':
+            res.setImage('Город под названием ******. Отгадывай!', Image.MOSCOW)
+            res.addText('Отгадывай')
+        else:
+            city = get_city(req)
+            if city == 'москва':
+                res.addText('Вы отгадали.')
+                res.addText('Прямо перед вами Московский исторический музей.')
+                res.addText('После стольких усилий вы наверняка хотите отпразновать победу.')
+                res.addText('Выберите место для этого или предложите свой вариант.')
+                res.addButton('кафе')
+                res.addButton('пиццерия')
+                res.addButton('кинотеатр')
+                user.state = CHOOSE_PLACE
+            elif city:
+                res.addText('Знаю такой город, но это не он.')
+                coord1 = maps.OUR_COORD
+                coord2 = maps.getCoord(city)
+                if coord1 and coord2:
+                    distance = maps.lonlat_distance(coord1, coord2)
+                    distance = int(distance / 1000)
+                    res.addText(f'Вы ошиблись на {distance} км.')
+                res.addText('Попробуй отгадать ещё раз.')
+                res.addButton('покажи город')
+            else:
+                res.addText('Нет такого города. Попробуй отгадать ещё раз.')
+                res.addButton('покажи город')
+
+    else:
+        res.addText('Вы вылезли через окно и неожиданно для вас вы оказываетесь на крыше пятиэтажки.')
+        res.addText('Перед вами открывается вид на очень знакомый город.')
+        res.addText('Попытайтесь его отгадать.')
+        res.addButton('покажи город')
+        user.state = GUESS_CITY
+
+
 def get_first_name(req):
     # перебираем сущности
     for entity in req['request']['nlu']['entities']:
@@ -227,3 +326,12 @@ def get_first_name(req):
             # то возвращаем ее значение.
             # Во всех остальных случаях возвращаем None.
             return entity['value'].get('first_name', None)
+
+
+def get_city(req):
+    # перебираем именованные сущности
+    for entity in req['request']['nlu']['entities']:
+        # если тип YANDEX.GEO, то пытаемся получить город(city), если нет, то возвращаем None
+        if entity['type'] == 'YANDEX.GEO':
+            # возвращаем None, если не нашли сущности с типом YANDEX.GEO
+            return entity['value'].get('city', None)
