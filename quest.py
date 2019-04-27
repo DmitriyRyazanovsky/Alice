@@ -42,9 +42,6 @@ def handle_dialog(res, req):
         res.addText('Давай поиграем.')
         command = None
 
-    Moscow(res, req, user, command)
-    return
-
     if user.room == 1:
         Room1(res, req, user, command)
 
@@ -147,7 +144,6 @@ def Room2(res, req, user: User, command):
     elif command == 'вылезти в окно':
         if user.window:
             Moscow(res, req, user, None)
-
             return
         else:
             res.addText('Окно слишком высоко.')
@@ -237,6 +233,8 @@ CHOOSE_YES_NO = 3
 
 
 def Moscow(res, req, user, command):
+    user.room = None
+
     if user.state == CHOOSE_YES_NO:
         if command == 'да':
             res.addText('Отлично! Квест пройден!')
@@ -255,7 +253,6 @@ def Moscow(res, req, user, command):
             res.addText('Не понятно. Так да или нет?')
             res.addButton('да')
             res.addButton('нет')
-            res.addButton('покажи на карте')
 
     elif user.state == CHOOSE_PLACE:
         organization = maps.getOrganization(command)
@@ -265,12 +262,21 @@ def Moscow(res, req, user, command):
             id = organization['properties']['CompanyMetaData']['id']
             coords = organization['geometry']['coordinates']
 
+            # описание, как получить ссылку на карточку организации:
+            # https://tech.yandex.ru/yandex-apps-launch/maps/doc/concepts/yandexmaps-web-docpage/#yandexmaps-web__org
+
             res.addText('Ближайшее ' + command + ' - ' + name + '.')
             res.addText('Подходит?')
             res.addButton('да')
             res.addButton('нет')
+
+            # описание как получить ссылку для построение марштура:
+            # https://tech.yandex.ru/yandex-apps-launch/maps/doc/concepts/yandexmaps-web-docpage/#yandexmaps-web__buildroute
+
             res.addButton('покажи на карте', f'https://yandex.ru/maps/org/{id}')
-            res.addButton('как дойти?', f'https://yandex.ru/maps/?rtext={coords[1]},{coords[0]}~{maps.OUR_COORD[1]},{maps.OUR_COORD[0]}&rtt=pd')
+            coord1 = f"{coords[1]},{coords[0]}"
+            coord2 = f"{maps.OUR_COORD[1]},{maps.OUR_COORD[0]}"
+            res.addButton('как дойти?', f'https://yandex.ru/maps/?rtext={coord1}~{coord2}&rtt=pd')
             user.state = CHOOSE_YES_NO
 
         else:

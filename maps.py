@@ -6,6 +6,8 @@ OUR_COORD = (37.61663946, 55.75657055)
 
 
 def getCoord(name):
+    # описание, как получить координаты объекта:
+
     geocoder_request = "http://geocode-maps.yandex.ru/1.x/?geocode=" + name + "&format=json"
 
     # Выполняем запрос.
@@ -47,6 +49,9 @@ def lonlat_distance(a, b):
 
 
 def getOrganization(name):
+    # описание как получить информация об организации
+    # https://tech.yandex.ru/maps/doc/geosearch/concepts/response_structure_business-docpage/
+
     key = 'fe7b2a61-955c-4291-aef1-baf38b3f2de8'
     text = 'ближайшее ' + name
     coord = f'{OUR_COORD[0]},{OUR_COORD[1]}'
@@ -62,10 +67,10 @@ def getOrganization(name):
             if len(features) > 0:
                 return features[0]
         else:
-            print("Ошибка выполнения запроса:")
-            print(request)
-            print("Http статус:", response.status_code, "(", response.reason, ")")
+            logging.error("Ошибка выполнения запроса:")
+            logging.error(request)
+            logging.error("Http статус:", response.status_code, "(", response.reason, ")")
     except:
-        print("Запрос не удалось выполнить. Проверьте подключение к сети Интернет.")
+        logging.error("Запрос не удалось выполнить. Проверьте подключение к сети Интернет.")
 
     return None
