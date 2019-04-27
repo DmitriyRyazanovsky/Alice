@@ -10,26 +10,40 @@ import maps
 users = {}
 
 
+# начало обработки запроса от Алисы
 def main():
+    # выводим запрос в лог
     logging.info('Request: %r', request.json)
+    # создаем начальный ответ
     response = Response(request)
+    # обрабатываем запрос
     handle_dialog(response, request.json)
+    # выводим ответ в лог
     logging.info('Response: %r', response)
     return json.dumps(response.res)
 
 
+# обрабатываем запрос
 def handle_dialog(res, req):
+    # получаем ID пользователя
     user_id = req['session']['user_id']
 
-    if req['session']['new']:
+    # если пользователь новый, то просим представиться
+    if req['session']['new'] or user_id not in users:
         res.addText('Привет! Назови свое имя!')
+        # создаем класс для хранения информации о пользователе
         user = User()
+        # добавляем класс в словарь
         users[user_id] = user
         return
 
+    # находим пользователя
     user = users[user_id]
+
+    # текст команды, которую ввел пользователь
     command = req['request']['original_utterance'].lower()
 
+    # если пользователь еще не представился
     if user.name is None:
         first_name = get_first_name(req)
 
@@ -42,19 +56,24 @@ def handle_dialog(res, req):
         res.addText('Давай поиграем.')
         command = None
 
+    # обработчик 1 комнаты
     if user.room == 1:
         Room1(res, req, user, command)
 
+    # обработчик 2 комнаты
     elif user.room == 2:
         Room2(res, req, user, command)
 
+    # обработчик 3 комнаты
     elif user.room == 3:
         Room3(res, req, user, command)
 
+    # обработчик Москвы
     else:
         Moscow(res, req, user, command)
 
 
+# обработчик 1 комнаты
 def Room1(res, req, user, command):
     user.room = 1
 
@@ -111,6 +130,7 @@ def Room1(res, req, user, command):
     res.addButton('выйти из комнаты')
 
 
+# обработчик 2 комнаты
 def Room2(res, req, user: User, command):
     user.password = True
     user.room = 2
@@ -178,6 +198,7 @@ def Room2(res, req, user: User, command):
         res.addButton('открыть дверь ключом')
 
 
+# обработчик 3 комнаты
 def Room3(res, req, user, command):
     user.room = 3
 
@@ -232,6 +253,7 @@ CHOOSE_PLACE = 2
 CHOOSE_YES_NO = 3
 
 
+# обработчик Москвы
 def Moscow(res, req, user, command):
     user.room = None
 
@@ -255,25 +277,33 @@ def Moscow(res, req, user, command):
             res.addButton('нет')
 
     elif user.state == CHOOSE_PLACE:
+        # получение информации об огранизации
         organization = maps.getOrganization(command)
 
+        # если организация найдена
         if organization:
+            # название организации
             name = organization['properties']['CompanyMetaData']['name']
+            # ID организации
             id = organization['properties']['CompanyMetaData']['id']
+            # координаты организации
             coords = organization['geometry']['coordinates']
 
-            # описание, как получить ссылку на карточку организации:
-            # https://tech.yandex.ru/yandex-apps-launch/maps/doc/concepts/yandexmaps-web-docpage/#yandexmaps-web__org
-
-            res.addText('Ближайшее ' + command + ' - ' + name + '.')
+            res.addText('Рекомендую ' + command + ' - ' + name + '.')
             res.addText('Подходит?')
             res.addButton('да')
             res.addButton('нет')
 
+            # построение ссылки для отображения карточки организации
+            # описание, как получить ссылку на карточку организации:
+            # https://tech.yandex.ru/yandex-apps-launch/maps/doc/concepts/yandexmaps-web-docpage/#yandexmaps-web__org
+
+            res.addButton('покажи на карте', f'https://yandex.ru/maps/org/{id}')
+
+            # построение ссылки для отображения маршрута
             # описание как получить ссылку для построение марштура:
             # https://tech.yandex.ru/yandex-apps-launch/maps/doc/concepts/yandexmaps-web-docpage/#yandexmaps-web__buildroute
 
-            res.addButton('покажи на карте', f'https://yandex.ru/maps/org/{id}')
             coord1 = f"{coords[1]},{coords[0]}"
             coord2 = f"{maps.OUR_COORD[1]},{maps.OUR_COORD[0]}"
             res.addButton('как дойти?', f'https://yandex.ru/maps/?rtext={coord1}~{coord2}&rtt=pd')
@@ -291,6 +321,7 @@ def Moscow(res, req, user, command):
             res.setImage('Город под названием ******. Отгадывай!', Image.MOSCOW)
             res.addText('Отгадывай')
         else:
+            # поиск города в запросе пользователя
             city = get_city(req)
             if city == 'москва':
                 res.addText('Вы отгадали.')
@@ -303,10 +334,15 @@ def Moscow(res, req, user, command):
                 user.state = CHOOSE_PLACE
             elif city:
                 res.addText('Знаю такой город, но это не он.')
+                # координаты нашего места
                 coord1 = maps.OUR_COORD
+                # получение координат города, который ввел пользователь
                 coord2 = maps.getCoord(city)
+                # если город найден
                 if coord1 and coord2:
+                    # определение расстояние
                     distance = maps.lonlat_distance(coord1, coord2)
+                    # перевод в километры
                     distance = int(distance / 1000)
                     res.addText(f'Вы ошиблись на {distance} км.')
                 res.addText('Попробуй отгадать ещё раз.')
@@ -323,6 +359,7 @@ def Moscow(res, req, user, command):
         user.state = GUESS_CITY
 
 
+# поиск имени пользователя в запросе пользователя
 def get_first_name(req):
     # перебираем сущности
     for entity in req['request']['nlu']['entities']:
@@ -334,6 +371,7 @@ def get_first_name(req):
             return entity['value'].get('first_name', None)
 
 
+# поиск названия города в запросе пользователя
 def get_city(req):
     # перебираем именованные сущности
     for entity in req['request']['nlu']['entities']:
