@@ -23,7 +23,9 @@ def main():
 # обрабатываем запрос
 def handle_dialog(res, req):
     # получаем ID пользователя
-    user_id = req['session']['user_id']
+    # заменил на 'user_id' на 'session_id',
+    # потому что иногда сбрасывается сессия
+    user_id = req['session']['session_id']
 
     # если пользователь новый, то просим представиться
     if req['session']['new']:

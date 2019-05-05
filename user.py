@@ -3,7 +3,7 @@ from sqlalchemy import Column, Integer, String, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-engine = create_engine('sqlite:///alice.db', connect_args = {'PRAGMA journal_mode':'MEMORY'})
+engine = create_engine('sqlite:///alice.db')
 Base = declarative_base()
 
 
