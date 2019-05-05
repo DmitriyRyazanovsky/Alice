@@ -33,14 +33,15 @@ class Response:
         button['title'] = title
         if url:
             button['url'] = url
-            # если есть ссылка, то показываем ее, как ссылка, и чтобы не удалялась при нажатии
-            button['hide'] = False
-        else:
-            # если ссылки нет, то показываем, как кнопка, и чтобы удалялась при нажатии
-            button['hide'] = True
+        button['hide'] = True
 
         # добавляем кнопку в список
         self.res['response']['buttons'].append(button)
+        return button
+
+    def addLink(self, title, url):
+        button = self.addButton(title, url)
+        button['hide'] = False
 
     # добавляем изображение по ID
     def setImage(self, title, id):

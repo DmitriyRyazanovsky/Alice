@@ -1,18 +1,16 @@
 from flask import request
 import logging
 import json
-from user import User
+from user import DbUser, findUser, createUser, commit
 from response import Response
 from images import Image
 import maps
-
-# создаём словарь, где для каждого пользователя мы будем хранить его данные
-users = {}
 
 
 # начало обработки запроса от Алисы
 def main():
     # выводим запрос в лог
+    logging.info('Request: %r', request.json)
     logging.info('Request: %r', request.json)
     # создаем начальный ответ
     response = Response(request)
@@ -29,16 +27,16 @@ def handle_dialog(res, req):
     user_id = req['session']['user_id']
 
     # если пользователь новый, то просим представиться
-    if req['session']['new'] or user_id not in users:
+    if req['session']['new']:
         res.addText('Привет! Назови свое имя!')
         # создаем класс для хранения информации о пользователе
-        user = User()
-        # добавляем класс в словарь
-        users[user_id] = user
+        user = createUser(user_id)
+        # сохраняем пользователя в базе данных
+        commit()
         return
 
     # находим пользователя
-    user = users[user_id]
+    user = findUser(user_id)
 
     # текст команды, которую ввел пользователь
     command = req['request']['original_utterance'].lower()
@@ -72,6 +70,9 @@ def handle_dialog(res, req):
     else:
         Moscow(res, req, user, command)
 
+    # сохраняем пользователя в базе данных
+    commit()
+
 
 # обработчик 1 комнаты
 def Room1(res, req, user, command):
@@ -80,7 +81,7 @@ def Room1(res, req, user, command):
     if command == 'покажи комнату':
         if not user.seif:
             res.setImage('Комната с закрытым сейфом', Image.ROOM1_SEIF_CLOSED)
-        elif not user.key:
+        elif not user.key3:
             res.setImage('Комната с открытым сейфом с ключём внутри', Image.ROOM1_SEIF_OPENED_KEY)
         else:
             res.setImage('Комната с пустым открытым сейфом', Image.ROOM1_SEIF_OPENED)
@@ -101,11 +102,11 @@ def Room1(res, req, user, command):
             user.seif = True
 
     elif command == 'взять ключ' and user.seif:
-        if user.key:
+        if user.key3:
             res.addText('Вы уже взяли ключ.')
         else:
             res.addText('Вы взяли ключ.')
-            user.key = True
+            user.key3 = True
 
     elif command == 'выйти из комнаты':
         Room2(res, req, user, None)
@@ -125,13 +126,13 @@ def Room1(res, req, user, command):
         res.addButton('открыть сейф')
     if user.password and not user.seif:
         res.addButton('открыть сейф паролем 1234')
-    if not user.key and user.seif:
+    if not user.key3 and user.seif:
         res.addButton('взять ключ')
     res.addButton('выйти из комнаты')
 
 
 # обработчик 2 комнаты
-def Room2(res, req, user: User, command):
+def Room2(res, req, user: DbUser, command):
     user.password = True
     user.room = 2
 
@@ -148,7 +149,7 @@ def Room2(res, req, user: User, command):
     elif command == 'открыть дверь ключом':
         if user.opened:
             res.addText('Дверь уже открыта.')
-        elif user.key:
+        elif user.key3:
             res.addText('Вы открыли дверь.')
             user.opened = True
         else:
@@ -194,7 +195,7 @@ def Room2(res, req, user: User, command):
     res.addButton('вылезти в окно')
     if user.taburetka and not user.window:
         res.addButton('поставить табуретку под окно')
-    if user.key:
+    if user.key3:
         res.addButton('открыть дверь ключом')
 
 
@@ -298,7 +299,7 @@ def Moscow(res, req, user, command):
             # описание, как получить ссылку на карточку организации:
             # https://tech.yandex.ru/yandex-apps-launch/maps/doc/concepts/yandexmaps-web-docpage/#yandexmaps-web__org
 
-            res.addButton('покажи на карте', f'https://yandex.ru/maps/org/{id}')
+            res.addLink('покажи на карте', f'https://yandex.ru/maps/org/{id}')
 
             # построение ссылки для отображения маршрута
             # описание как получить ссылку для построение марштура:
@@ -306,7 +307,7 @@ def Moscow(res, req, user, command):
 
             coord1 = f"{coords[1]},{coords[0]}"
             coord2 = f"{maps.OUR_COORD[1]},{maps.OUR_COORD[0]}"
-            res.addButton('как дойти?', f'https://yandex.ru/maps/?rtext={coord1}~{coord2}&rtt=pd')
+            res.addLink('как дойти?', f'https://yandex.ru/maps/?rtext={coord1}~{coord2}&rtt=pd')
             user.state = CHOOSE_YES_NO
 
         else:
