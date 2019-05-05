@@ -11,7 +11,6 @@ import maps
 def main():
     # выводим запрос в лог
     logging.info('Request: %r', request.json)
-    logging.info('Request: %r', request.json)
     # создаем начальный ответ
     response = Response(request)
     # обрабатываем запрос
@@ -65,6 +64,10 @@ def handle_dialog(res, req):
     # обработчик 3 комнаты
     elif user.room == 3:
         Room3(res, req, user, command)
+
+    # обработчик 4 комнаты
+    elif user.room == 4:
+        Room4(res, req, user, command)
 
     # обработчик Москвы
     else:
@@ -146,21 +149,40 @@ def Room2(res, req, user: DbUser, command):
         Room1(res, req, user, None)
         return
 
-    elif command == 'открыть дверь ключом':
-        if user.opened:
+    elif command == 'открыть дверь справа ключом':
+        if user.opened3:
             res.addText('Дверь уже открыта.')
         elif user.key3:
             res.addText('Вы открыли дверь.')
-            user.opened = True
+            user.opened3 = True
         else:
             res.addText('У вас нет ключа.')
 
-    elif command == 'зайти в следующую комнату':
-        if user.opened:
+    elif command == 'открыть дверь спереди ключом':
+        if user.opened4:
+            res.addText('Дверь уже открыта.')
+        elif user.key4:
+            res.addText('Вы открыли дверь.')
+            user.opened4 = True
+        elif user.key3:
+            res.addText('Ключ не подходит.')
+        else:
+            res.addText('У вас нет ключа.')
+
+    elif command == 'зайти в комнату справа':
+        if user.opened3:
             Room3(res, req, user, None)
             return
         else:
-            res.addText('Дверь закрыта на ключ.')
+            res.addText('Дверь справа закрыта на ключ.')
+
+    elif command == 'зайти в комнату спереди':
+        if user.opened4:
+            Room4(res, req, user, None)
+            return
+        else:
+            res.addText('Дверь спереди закрыта на ключ.')
+
 
     elif command == 'вылезти в окно':
         if user.window:
@@ -183,7 +205,7 @@ def Room2(res, req, user: DbUser, command):
         if command:
             res.addText('Непонятная команда.')
         res.addText('Вы во второй комнате.')
-        res.addText('Здесь 2 двери, одна в первую комнату, другая в третью.')
+        res.addText('Здесь 3 двери, одна в начальную комнату, вторая в комнату справа, третья в комнату спереди.')
         res.addText('Высоко под потолком окно.')
         res.addText('На стене надпись 1234, но вы бы ни за что не догадались, что это код от сейфа.')
 
@@ -191,12 +213,15 @@ def Room2(res, req, user: DbUser, command):
 
     res.addButton('покажи комнату')
     res.addButton('зайти в начальную комнату')
-    res.addButton('зайти в следующую комнату')
+    res.addButton('зайти в комнату справа')
+    res.addButton('зайти в комнату спереди')
     res.addButton('вылезти в окно')
     if user.taburetka and not user.window:
         res.addButton('поставить табуретку под окно')
-    if user.key3:
-        res.addButton('открыть дверь ключом')
+    if (user.key3 or user.key4) and not user.opened3:
+        res.addButton('открыть дверь справа ключом')
+    if (user.key3 or user.key4) and not user.opened4:
+        res.addButton('открыть дверь спереди ключом')
 
 
 # обработчик 3 комнаты
@@ -205,7 +230,10 @@ def Room3(res, req, user, command):
 
     if command == 'покажи комнату':
         if not user.taburetka:
-            res.setImage('Комната с табуреткой', Image.ROOM3_TABURETKA)
+            if not user.key4:
+                res.setImage('Комната с табуреткой, на ней ключ', Image.ROOM3_TABURETKA)
+            else:
+                res.setImage('Комната с табуреткой', Image.ROOM3_TABURETKA)
         else:
             res.setImage('Пустая комната', Image.ROOM3)
 
@@ -213,9 +241,18 @@ def Room3(res, req, user, command):
         Room2(res, req, user, None)
         return
 
-    elif command == 'поднять табуретку':
+    elif command == 'взять ключ':
+        if not user.key4:
+            res.addText('Вы взяли ключ.')
+            user.key4 = True
+        else:
+            res.addText('Вы уже взяли ключ.')
+
+    elif command == 'поднять табуретку' and user.key4:
         if user.taburetka:
             res.addText('Она у вас в руках.')
+        elif not user.choko:
+            res.addText('Табуретка оказалась слишком тяжелая, у вас не хватило сил ее поднять.')
         else:
             res.addText('Вы с великим и упорным трудом подняли табуретку.')
             user.taburetka = True
@@ -232,7 +269,9 @@ def Room3(res, req, user, command):
             res.addText('Непонятная команда.')
         res.addText('Вы в третьей комнате.')
         if not user.taburetka:
-            res.addText('Здесь табуретка, дверь и всё.')
+            res.addText('Здесь табуретка и дверь.')
+            if not user.key4:
+                res.addText('На табуретке лежит еще один ключ!')
         else:
             res.addText('Интересно стоять в пустой комнате с табуреткой в руках.')
 
@@ -240,10 +279,70 @@ def Room3(res, req, user, command):
 
     res.addButton('покажи комнату')
     res.addButton('выйти из комнаты')
-    if user.taburetka:
+    if not user.key4:
+        res.addButton('взять ключ')
+    elif user.taburetka:
         res.addButton('поставить табуретку')
     else:
         res.addButton('поднять табуретку')
+
+
+# обработчик 4 комнаты
+def Room4(res, req, user: DbUser, command):
+    user.room = 4
+
+    if command == 'покажи комнату':
+        if user.fridge:
+            res.setImage('Комната с открытым холодильником', Image.ROOM4_OPENED)
+        else:
+            res.setImage('Комната с закрытым холодильником', Image.ROOM4_CLOSED)
+
+    elif command == 'выйти из комнаты':
+        Room2(res, req, user, None)
+        return
+
+    elif command == 'открыть холодильник':
+        res.addText('Вы открыли холодильник.')
+        if not user.choko:
+            res.addText('Внутри лежит шоколадка.')
+        else:
+            res.addText('Внутри пусто.')
+        user.fridge = True
+
+    elif command == 'закрыть холодильник':
+        res.addText('Вы закрыли холодильник.')
+        user.fridge = False
+
+    elif command == 'съесть шокаладку':
+        if user.choko:
+            res.addText('Вы ее уже съели!')
+        else:
+            res.addText('Вы съели шоколадку и ощутили огромный прилив сил.')
+        user.choko = True
+
+    else:
+        if command:
+            res.addText('Непонятная команда.')
+        res.addText('Вы в четверной комнате.')
+        if user.fridge:
+            if user.choko:
+                res.addText('Здесь стоит пустой открытый холодильник.')
+            else:
+                res.addText('Здесь стоит открытый холодильник с шоколадкой внутри.')
+        else:
+            res.addText('Здесь стоит закрытый холодильник.')
+
+    res.addText('Выберите команду:')
+
+    res.addButton('покажи комнату')
+    res.addButton('выйти из комнаты')
+    if user.fridge:
+        res.addButton('закрыть холодильник')
+    else:
+        res.addButton('открыть холодильник')
+
+    if user.fridge and not user.choko:
+        res.addButton('съесть шокаладку')
 
 
 # состояние - пользователь отгадывает город
