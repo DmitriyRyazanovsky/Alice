@@ -22,10 +22,16 @@ def main():
 
 # обрабатываем запрос
 def handle_dialog(res, req):
+    # текст команды, которую ввел пользователь
+    command = req['request']['original_utterance'].lower()
+
+    # обработчик пинга
+    if command == 'ping':
+        res.addText('pong')
+        return
+
     # получаем ID пользователя
-    # заменил на 'user_id' на 'session_id',
-    # потому что иногда сбрасывается сессия
-    user_id = req['session']['session_id']
+    user_id = req['session']['user_id']
 
     # если пользователь новый, то просим представиться
     if req['session']['new']:
@@ -38,9 +44,6 @@ def handle_dialog(res, req):
 
     # находим пользователя
     user = findUser(user_id)
-
-    # текст команды, которую ввел пользователь
-    command = req['request']['original_utterance'].lower()
 
     # если пользователь еще не представился
     if user.name is None:

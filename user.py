@@ -26,6 +26,9 @@ class DbUser(Base):
 
     def __init__(self, id):
         self.id = id  # ид пользователя
+        self.reset()
+
+    def reset(self):
         self.name = None  # имя пользователя
         self.room = 1  # комната, где находимся
         self.key3 = False  # взяли ключ от комнаты 3
@@ -41,8 +44,8 @@ class DbUser(Base):
         self.state = None  # текущий этап в Москве
 
 
-def __repr__(self):
-    return "<User('%s','%s')>" % (self.id, self.name)
+    def __repr__(self):
+        return "<User('%s','%s')>" % (self.id, self.name)
 
 
 # Создание таблицы
@@ -55,12 +58,13 @@ session = Session()
 
 # создаем пользователя в базе данных
 def createUser(id: str):
-    # если такой был, то удаляем
+    # если такой был, то сбрасываем
     user = findUser(id)
     if user:
-        session.delete(user)
-    user = DbUser(id)
-    session.add(user)
+        user.reset()
+    else:
+        user = DbUser(id)
+        session.add(user)
     return user
 
 
