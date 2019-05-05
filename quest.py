@@ -16,7 +16,7 @@ def main():
     # обрабатываем запрос
     handle_dialog(response, request.json)
     # выводим ответ в лог
-    logging.info('Response: %r', response)
+    logging.info('Response: %r', response.res)
     return json.dumps(response.res)
 
 
